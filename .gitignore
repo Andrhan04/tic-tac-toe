@@ -1,0 +1,7 @@
+/venv/
+/__pycache__/
+/Class/__pycache__/
+/Command/__pycache__/
+/configurate/__pycache__/
+/configurate/logs.txt
+/test.py
