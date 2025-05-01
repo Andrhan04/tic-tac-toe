@@ -8,6 +8,9 @@ __depends__ = {}
 
 steps = [
 step("""
+    DROP TABLE IF EXISTS users, game, field;
+"""),
+step("""
     CREATE TABLE Users (
         chat_id     BIGINT      PRIMARY KEY,
         username    TEXT        NOT NULL CHECK (TRIM(username) = '' IS NOT TRUE),
@@ -22,7 +25,7 @@ step('''
         Times       TIMESTAMP       DEFAULT CURRENT_TIMESTAMP(0),
         IsEnd       BOOLEAN         DEFAULT FALSE,
         Zero        BIGINT          REFERENCES users(chat_id) ON DELETE CASCADE,
-        Сross       BIGINT          REFERENCES users(chat_id) ON DELETE CASCADE
+        Crosses     BIGINT          REFERENCES users(chat_id) ON DELETE CASCADE
     );
 '''),
 step("""
@@ -31,6 +34,7 @@ step("""
         y integer NOT NULL CHECK (y BETWEEN 1 AND 19),
         user_id BIGINT REFERENCES users(chat_id) ON DELETE CASCADE,
         game_id integer REFERENCES game(id) ON DELETE CASCADE,
+        time  TIMESTAMP DEFAULT CURRENT_TIMESTAMP(0),
         UNIQUE (x, y, game_id)
     );
 """),
@@ -46,9 +50,11 @@ step('''
         RETURN NEW;
     END;
     $$;
-
     CREATE TRIGGER name_trigger
     BEFORE INSERT OR UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION name_validate();
-''')
+'''),
+step("""
+    INSERT INTO users (chat_id, username, name, IsHost) VALUES (5383313610, 'Han_Andr', 'Андрей', true);
+"""),
 ]
