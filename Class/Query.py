@@ -206,8 +206,8 @@ def isWin(chat_id : int):
     if(len(moves) == 0):
         return False
     
-    x = moves[0][0]
-    y = moves[0][1]
+    x = moves[0][0] - 1
+    y = moves[0][1] - 1
     z = moves[0][2]
     symbol = ''
     if(z==False):
@@ -233,11 +233,11 @@ def isWin(chat_id : int):
         total = 1  # Текущий ход уже учитывается
         for dx, dy in direction_pair:
             nx, ny = x + dx, y + dy
-            while 0 <= nx < n and 0 <= ny < n and table[nx][ny] == symbol:
-                    total += 1
-                    nx += dx
-                    ny += dy
-                    
-            if total >= 5:
-                return True
+            while 0 <= nx < n and 0 <= ny < n and table[ny][nx] == symbol:
+                total += 1
+                nx += dx
+                ny += dy
+        if total >= 5:
+            return True
+    #print(table)
     return False

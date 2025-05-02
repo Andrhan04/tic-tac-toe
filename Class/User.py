@@ -116,13 +116,15 @@ def Step(message : types.Message):
         write_log_exeption(message,str(e))
         bot.send_message(message.chat.id, "Не твой ход", reply_markup=types.ReplyKeyboardRemove())    
     try:
-        bot.send_message(user_id, 'Противник делает ход', reply_markup=types.ReplyKeyboardRemove())
+        #bot.send_message(user_id, 'Противник делает ход', reply_markup=types.ReplyKeyboardRemove())
         msg = bot.send_message(message.chat.id, 'Куда сходить? \nНапиши два числа через пробел.', reply_markup=types.ReplyKeyboardRemove())
         bot.register_next_step_handler(msg, process_step)
     except Exception as e:
         write_log_exeption(message,str(e))
         bot.send_message(message.chat.id, "Пиздец", reply_markup=types.ReplyKeyboardRemove())
         
+data_game = ["Посмотреть поле", "Сделать ход", "Завершить игру"]
+
 def process_step(message : types.Message):
     write_log(message)
     try:
@@ -135,8 +137,12 @@ def process_step(message : types.Message):
             draw(user_id)
             if(q.isWin(user_id)):
                 EndGame(message)
-            else:
-                bot.send_message(user_id, "Твой ход", reply_markup=types.ReplyKeyboardRemove())
+            else: 
+                markup : types.ReplyKeyboardMarkup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                for i in data_game:
+                    items : types.KeyboardButton = types.KeyboardButton(i)
+                    markup.add(items)
+                bot.send_message(user_id, "Твой ход", reply_markup=markup)
                 bot.send_message(message.chat.id, "Ход записан успешно", reply_markup=types.ReplyKeyboardRemove())
         except Exception as e:
             write_log_exeption(message,str(e))
@@ -151,10 +157,11 @@ path:str = "Images\\"
 
 def ShowField(message : types.Message):
     "Отрисовка положения игры"
-    draw(message.chat.id)
+    draw(int(message.chat.id))
 
 def draw(chat_id : int):
     "Отрисовка положения игры"
+
     game_id : int = q.GetGame(chat_id)
     if(game_id == -1):
         bot.send_message(chat_id, "Ты не в игре", reply_markup=types.ReplyKeyboardRemove())
