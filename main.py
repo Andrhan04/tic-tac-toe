@@ -47,7 +47,7 @@ def message_reply(message : types.Message):
     elif message.text=="Сделать ход":
         user.Step(message)
     elif message.text=="Посмотреть поле":    
-        bot.send_message(message.chat.id,'Где поле?')
+        bot.send_message(message.chat.id,'Сейчас будет поле')
         user.draw(message)
     elif message.text=="Завершить игру":    
         user.EndGame(message)

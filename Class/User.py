@@ -1,6 +1,6 @@
 from telebot import types
 from Class.bot import bot
-from configurate.Logs import write_log, write_log_exeption
+from configurate.Logs import write_log, write_log_exeption, write_exeption
 import Class.Query as q
 import matplotlib.pyplot as plt
 import time
@@ -116,9 +116,9 @@ def Step(message : types.Message):
         write_log_exeption(message,str(e))
         bot.send_message(message.chat.id, "Не твой ход", reply_markup=types.ReplyKeyboardRemove())    
     try:
+        bot.send_message(user_id, 'Противник делает ход', reply_markup=types.ReplyKeyboardRemove())
         msg = bot.send_message(message.chat.id, 'Куда сходить? \nНапиши два числа через пробел.', reply_markup=types.ReplyKeyboardRemove())
         bot.register_next_step_handler(msg, process_step)
-        bot.send_message(user_id, 'Противник делает ход', reply_markup=types.ReplyKeyboardRemove())
     except Exception as e:
         write_log_exeption(message,str(e))
         bot.send_message(message.chat.id, "Пиздец", reply_markup=types.ReplyKeyboardRemove())
@@ -130,9 +130,17 @@ def process_step(message : types.Message):
         x = int(data[0])
         y = int(data[1])
         user_id : int = q.GetPrevStep(message.chat.id)
-        q.Step(message.chat.id, x, y)
-        bot.send_message(message.chat.id, "Ход записан успешно", reply_markup=types.ReplyKeyboardRemove())
-        bot.send_message(user_id, "Твой ход", reply_markup=types.ReplyKeyboardRemove())
+        try:
+            q.Step(message.chat.id, x, y)
+            draw(user_id)
+            if(q.isWin(user_id)):
+                EndGame(message)
+            else:
+                bot.send_message(user_id, "Твой ход", reply_markup=types.ReplyKeyboardRemove())
+                bot.send_message(message.chat.id, "Ход записан успешно", reply_markup=types.ReplyKeyboardRemove())
+        except Exception as e:
+            write_log_exeption(message,str(e))
+            bot.send_message(message.chat.id, "Ты еблан?", reply_markup=types.ReplyKeyboardRemove())
     except Exception as e:
         write_log_exeption(message,str(e))
         bot.send_message(message.chat.id, "Пиздец", reply_markup=types.ReplyKeyboardRemove())
@@ -140,18 +148,23 @@ def process_step(message : types.Message):
 
 #---------------------------------------------------------------------------------------------------------------------------------------------
 path:str = "Images\\"
-def draw(message : types.Message):
+
+def ShowField(message : types.Message):
     "Отрисовка положения игры"
-    game_id : int = q.GetGame(message.chat.id)
+    draw(message.chat.id)
+
+def draw(chat_id : int):
+    "Отрисовка положения игры"
+    game_id : int = q.GetGame(chat_id)
     if(game_id == -1):
-        bot.send_message(message.chat.id, "Ты не в игре", reply_markup=types.ReplyKeyboardRemove())
+        bot.send_message(chat_id, "Ты не в игре", reply_markup=types.ReplyKeyboardRemove())
         return
     try:
         moves = q.GetMoves(game_id) 
     except Exception as e:
-        write_log_exeption(message, str(e))
-        bot.send_message(message.chat.id, "Пиздец", reply_markup=types.ReplyKeyboardRemove())
-        return
+        bot.send_message(chat_id, "Пиздец", reply_markup=types.ReplyKeyboardRemove())
+        write_exeption(str(e),"USer.draw")
+        raise e
     table = [''] * 19
     color = ['w'] * 19
     for i in range(19):
@@ -187,6 +200,6 @@ def draw(message : types.Message):
     # plt.show()
     plt.savefig(path + f'table_{game_id}_{len(moves)}.png')
     plt.close(fig)
-    time.sleep(3)
+    #time.sleep(3)
     photo = open(path + f'table_{game_id}_{len(moves)}.png', 'rb')
-    bot.send_photo(message.chat.id, photo)
+    bot.send_photo(chat_id, photo)

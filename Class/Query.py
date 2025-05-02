@@ -93,6 +93,7 @@ def Step(chat_id : int, x: int, y:int):
     except Exception as e:
         conn.rollback()
         write_exeption(str(e), "Query.Step")
+        raise e
         
 def EndGame(game_id : int):
     try:
@@ -116,15 +117,17 @@ def GetPrevStep(chat_id : int):
         cursor.execute(f"SELECT user_id FROM field WHERE game_id = {game_id} ORDER BY time DESC LIMIT 1;")
         result = cursor.fetchall()
         conn.commit()
-        if (len(result) == 0 or len(result[0]) == 0):
+        cursor.close()
+        if (len(result) == 0 or len(result[0]) == 0 or result[0][0] == None):
             result = GetZero(game_id)
+            return result
         else:
             return result[0][0]
-        cursor.close()
     except Exception as e:
         conn.rollback()
         cursor.close()
         write_exeption(str(e), "Query.GetPrevStep")
+        raise Exception("Cant get user previos")
         
 def GetZero(game_id : int):
     try:
@@ -178,3 +181,63 @@ def GetMoves(game_id : int):
         conn.rollback()
         cursor.close()
         write_exeption(str(e), "Query.GetCross")
+
+def isWin(chat_id : int):
+    cursor = conn.cursor()
+    game_id = GetGame(chat_id)
+    cursor.execute(
+        '''
+            SELECT 
+                x,
+                y, 
+                CASE WHEN user_id = Zero
+                    THEN false
+                    ELSE true
+                END my
+            FROM field INNER JOIN game ON game_id = id
+            WHERE game_id = %s
+            ORDER BY time DESC
+        ''',
+        (game_id,)
+    )
+    moves = cursor.fetchall()
+    if(len(moves) == 361):
+        return True
+    if(len(moves) == 0):
+        return False
+    
+    x = moves[0][0]
+    y = moves[0][1]
+    z = moves[0][2]
+    symbol = ''
+    if(z==False):
+        symbol = 'O'
+    else:
+        symbol = 'X'
+    directions = [
+            [(0, 1), (0, -1)],  
+            [(1, 0), (-1, 0)],  
+            [(1, 1), (-1, -1)], 
+            [(1, -1), (-1, 1)]   
+        ]
+    table = [''] * 19
+    for i in range(19):
+        table[i] = [''] * 19
+    for row in moves: # Красим занятые
+        if(row[2] == False):
+            table[row[1] - 1][row[0] - 1] = 'O'
+        else: 
+            table[row[1] - 1][row[0] - 1] = 'X'
+    n = 19
+    for direction_pair in directions:
+        total = 1  # Текущий ход уже учитывается
+        for dx, dy in direction_pair:
+            nx, ny = x + dx, y + dy
+            while 0 <= nx < n and 0 <= ny < n and table[nx][ny] == symbol:
+                    total += 1
+                    nx += dx
+                    ny += dy
+                    
+            if total >= 5:
+                return True
+    return False
