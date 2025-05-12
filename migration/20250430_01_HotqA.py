@@ -58,6 +58,7 @@ step("""
     INSERT INTO users (chat_id, username, name, IsHost) VALUES (5383313610, 'Han_Andr', 'Андрей', true);
     
     INSERT INTO users (chat_id, username, name) VALUES (1058304013, 'Dodonyas', 'Доржи');
+    INSERT INTO users (chat_id, username, name) VALUES (-1, 'Dodo_Bot', 'Dodo_pizza');
     
     INSERT INTO game (id, times, isend, Zero, Crosses) VALUES (1 ,'2025-05-01 14:15:01', true, 1058304013, 5383313610);
     

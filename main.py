@@ -37,6 +37,13 @@ def stop(message : types.Message):
     else:
         bot.send_message(message.chat.id, 'Пошёл на хуй!\nТы не создатель.', reply_markup=types.ReplyKeyboardRemove())
 
+@bot.message_handler(commands=['admin'])
+def stop(message : types.Message):
+    if(IsHost(message.chat.id)):
+        Panel.Admin(message)
+    else:
+        bot.send_message(message.chat.id, 'Пошёл на хуй!\nТы не создатель.', reply_markup=types.ReplyKeyboardRemove())
+
 @bot.message_handler(content_types='text')
 def message_reply(message : types.Message):
     write_log(message)
@@ -51,6 +58,26 @@ def message_reply(message : types.Message):
         user.ShowField(message)
     elif message.text=="Завершить игру":    
         user.EndGame(message)
+    elif message.text=="Лучший ход по мнению Доржи":    
+        if(IsHost(message.chat.id)):
+            user.GetBestStepDodo(message)
+        else:
+            bot.send_message(message.chat.id, 'Пошёл на хуй!\nТы не создатель.', reply_markup=types.ReplyKeyboardRemove())
+    elif message.text=="Лучший ход по мнению IT Planet":    
+        if(IsHost(message.chat.id)):
+            user.GetBestStepIT(message)
+        else:
+            bot.send_message(message.chat.id, 'Пошёл на хуй!\nТы не создатель.', reply_markup=types.ReplyKeyboardRemove())
+    elif message.text=="Сделай лучший ход от Доржи":    
+        if(IsHost(message.chat.id)):
+            user.BestStepDodo(message)
+        else:
+            bot.send_message(message.chat.id, 'Пошёл на хуй!\nТы не создатель.', reply_markup=types.ReplyKeyboardRemove())
+    elif message.text=="Сделай лучший ход от IT Planet":    
+        if(IsHost(message.chat.id)):
+            user.BestStepIT(message)
+        else:
+            bot.send_message(message.chat.id, 'Пошёл на хуй!\nТы не создатель.', reply_markup=types.ReplyKeyboardRemove())        
     else:
         bot.send_message(message.chat.id,f"{message.text}",reply_markup=types.ReplyKeyboardRemove())
         bot.send_message(message.chat.id, f"Для взаимодействия с ботом /panel \nДля игры /game\nДля админа /admin", reply_markup=types.ReplyKeyboardRemove())

@@ -2,7 +2,9 @@ from telebot import types
 from Class.bot import bot
 from configurate.Logs import write_log, write_log_exeption, write_exeption
 import Class.Query as q
+import Class.Robot as r
 import matplotlib.pyplot as plt
+from Class.panel import data_game, data_admin
 import time
 import matplotlib
 
@@ -59,8 +61,8 @@ def NewGame(message : types.Message):
         
 def process_create_game(message : types.Message):
     write_log(message)
-    user_id = int(message.text.split()[2])
     try:
+        user_id = int(message.text.split()[2])
         q.CreateNewGame(message.chat.id, user_id)
         arr_users = q.Get_Users()
         Cross : str = ""
@@ -69,7 +71,8 @@ def process_create_game(message : types.Message):
                 if(chat_id == message.chat.id):
                     Cross = username
                     Cross_name = name
-        bot.send_message(user_id, f"Вас призвал в игру {Cross} с именем {Cross_name}", reply_markup=types.ReplyKeyboardRemove())
+        if(user_id > 0):
+            bot.send_message(user_id, f"Вас призвал в игру {Cross} с именем {Cross_name}", reply_markup=types.ReplyKeyboardRemove())
         bot.send_message(message.chat.id, f"Игра создана", reply_markup=types.ReplyKeyboardRemove())
     except Exception as e:
         bot.send_message(message.chat.id, f"Пошёл на фиг", reply_markup=types.ReplyKeyboardRemove())
@@ -92,8 +95,10 @@ def EndGame(message : types.Message):
                 return
             Zero_id = q.GetZero(game_id)
             Cross_id = q.GetCross(game_id)
-            bot.send_message(Zero_id, "Игра завершена", reply_markup=types.ReplyKeyboardRemove())
-            bot.send_message(Cross_id, "Игра завершена", reply_markup=types.ReplyKeyboardRemove())
+            if(Zero_id > 0):
+                bot.send_message(Zero_id, "Игра завершена", reply_markup=types.ReplyKeyboardRemove())
+            if(Cross_id > 0):
+                bot.send_message(Cross_id, "Игра завершена", reply_markup=types.ReplyKeyboardRemove())
     except Exception as e:
         write_log_exeption(message,str(e))
         bot.send_message(message.chat.id, "Пиздец", reply_markup=types.ReplyKeyboardRemove())
@@ -122,8 +127,6 @@ def Step(message : types.Message):
     except Exception as e:
         write_log_exeption(message,str(e))
         bot.send_message(message.chat.id, "Пиздец", reply_markup=types.ReplyKeyboardRemove())
-        
-data_game = ["Посмотреть поле", "Сделать ход", "Завершить игру"]
 
 def process_step(message : types.Message):
     write_log(message)
@@ -134,16 +137,43 @@ def process_step(message : types.Message):
         user_id : int = q.GetPrevStep(message.chat.id)
         try:
             q.Step(message.chat.id, x, y)
-            draw(user_id)
-            if(q.isWin(user_id)):
+            if(q.isWin(message.chat.id)):
+                if(user_id > 0):
+                    bot.send_message(user_id, "Вы проиграли", reply_markup=types.ReplyKeyboardRemove())
+                bot.send_message(message.chat.id, "Вы победили", reply_markup=types.ReplyKeyboardRemove())
                 EndGame(message)
+                return
             else: 
-                markup : types.ReplyKeyboardMarkup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-                for i in data_game:
-                    items : types.KeyboardButton = types.KeyboardButton(i)
-                    markup.add(items)
-                bot.send_message(user_id, "Твой ход", reply_markup=markup)
-                bot.send_message(message.chat.id, "Ход записан успешно", reply_markup=types.ReplyKeyboardRemove())
+#------------------------------------------------------------------------------------------------------------------------
+                if(user_id > 0):
+                    markup : types.ReplyKeyboardMarkup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                    draw(user_id)
+                    if(q.IsHost(user_id)):
+                        for i in data_admin:
+                            items : types.KeyboardButton = types.KeyboardButton(i)
+                            markup.add(items)
+                    for i in data_game:
+                        items : types.KeyboardButton = types.KeyboardButton(i)
+                        markup.add(items)
+                    bot.send_message(user_id, "Твой ход", reply_markup=markup)
+                    bot.send_message(message.chat.id, "Ход записан успешно", reply_markup=types.ReplyKeyboardRemove())
+#---------------------------------------------------------------------------------------------------------------------------                
+                else:
+                    time.sleep(1)
+                    r.Best_Step(message, user_id)
+                    draw(message.chat.id)
+                    if(q.isWin(message.chat.id)):
+                        bot.send_message(message.chat.id, "Вы проиграли", reply_markup=types.ReplyKeyboardRemove())
+                        EndGame(message)
+                    markup : types.ReplyKeyboardMarkup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                    if(q.IsHost(message.chat.id)):
+                        for i in data_admin:
+                            items : types.KeyboardButton = types.KeyboardButton(i)
+                            markup.add(items)
+                    for i in data_game:
+                        items : types.KeyboardButton = types.KeyboardButton(i)
+                        markup.add(items)
+                    bot.send_message(message.chat.id, "Твой ход", reply_markup=markup)
         except Exception as e:
             write_log_exeption(message,str(e))
             bot.send_message(message.chat.id, "Ты еблан?", reply_markup=types.ReplyKeyboardRemove())
@@ -161,7 +191,6 @@ def ShowField(message : types.Message):
 
 def draw(chat_id : int):
     "Отрисовка положения игры"
-
     game_id : int = q.GetGame(chat_id)
     if(game_id == -1):
         bot.send_message(chat_id, "Ты не в игре", reply_markup=types.ReplyKeyboardRemove())
@@ -209,4 +238,71 @@ def draw(chat_id : int):
     plt.close(fig)
     #time.sleep(3)
     photo = open(path + f'table_{game_id}_{len(moves)}.png', 'rb')
-    bot.send_photo(chat_id, photo)
+    if(chat_id > 0):
+        bot.send_photo(chat_id, photo)
+
+#--------------------------------------------------------------------------------------------------
+# Лучшие ходы
+def GetBestStepDodo(message : types.Message):
+    game_id : int = q.GetGame(message.chat.id)
+    if(game_id == -1):
+        bot.send_message(message.chat.id, "Ты не в игре", reply_markup=types.ReplyKeyboardRemove())
+        return
+    try:
+        x,y = q.GetBestStep_Dodo(game_id,message.chat.id)
+        markup : types.ReplyKeyboardMarkup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        for i in data_game:
+            items : types.KeyboardButton = types.KeyboardButton(i)
+            markup.add(items)
+        bot.send_message(message.chat.id, f"Лучший ход x = {x}, y = {y}", reply_markup=markup)
+    except Exception as e:
+        write_log_exeption(message,str(e))
+        bot.send_message(message.chat.id, "Чито - то пошло не так", reply_markup=types.ReplyKeyboardRemove())
+
+def BestStepDodo(message : types.Message):
+    try:
+        game_id = q.GetGame(message.chat.id)
+        x,y = q.GetBestStep_Dodo(game_id,message.chat.id)
+        message.text = f"{x} {y}"
+        process_step(message)
+        markup : types.ReplyKeyboardMarkup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        for i in data_admin:
+            items : types.KeyboardButton = types.KeyboardButton(i)
+            markup.add(items)
+        bot.send_message(message.chat.id, "Ход сделан", reply_markup=markup)
+    except Exception as e:
+        write_log_exeption(message,str(e))
+        raise Exception("Can not do step dodo")
+    
+
+def GetBestStepIT(message : types.Message):
+    game_id : int = q.GetGame(message.chat.id)
+    if(game_id == -1):
+        bot.send_message(message.chat.id, "Ты не в игре", reply_markup=types.ReplyKeyboardRemove())
+        return
+    try:
+        x,y = q.GetBestStep_IT(game_id,message.chat.id)
+        markup : types.ReplyKeyboardMarkup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        for i in data_game:
+            items : types.KeyboardButton = types.KeyboardButton(i)
+            markup.add(items)
+        bot.send_message(message.chat.id, f"Лучший ход x = {x}, y = {y}", reply_markup=markup)
+    except Exception as e:
+        write_log_exeption(message,str(e))
+        bot.send_message(message.chat.id, "Чито - то пошло не так", reply_markup=types.ReplyKeyboardRemove())
+
+def BestStepIT(message : types.Message):
+    try:
+        game_id = q.GetGame(message.chat.id)
+        x,y = q.GetBestStep_IT(game_id,message.chat.id)
+        message.text = f"{x} {y}"
+        process_step(message)
+        markup : types.ReplyKeyboardMarkup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        for i in data_admin:
+            items : types.KeyboardButton = types.KeyboardButton(i)
+            markup.add(items)
+        bot.send_message(message.chat.id, "Ход сделан", reply_markup=markup)
+    except Exception as e:
+        write_log_exeption(message,str(e))
+        raise Exception("Can not do step dodo")
+    
